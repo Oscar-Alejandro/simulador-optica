@@ -1,86 +1,159 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-from utils_math import calcular_snell
+from utils_math import calcular_snell, analizar_camino_optico
 
-# Configuración de la página
-st.set_page_config(page_title="Módulo II: Reflexión y Refracción", layout="centered")
+# Configuración de la página web
+st.set_page_config(page_title="Módulo II: Reflexión y Refracción", layout="wide")
 
-st.title("Módulo II: Leyes de Reflexión y Refracción")
-st.markdown("Simulador interactivo para el análisis de fronteras dieléctricas.")
+st.title("Módulo II: Reflexión y Refracción")
+st.markdown("Estudio de la Ley de Snell y verificación analítica del Principio de Fermat.")
 
-# Panel lateral para los controles (Inputs)
-st.sidebar.header("Parámetros del Sistema")
-n1 = st.sidebar.slider("Índice n1 (Medio de Incidencia)", min_value=1.0, max_value=3.0, value=1.0, step=0.01)
-n2 = st.sidebar.slider("Índice n2 (Medio de Transmisión)", min_value=1.0, max_value=3.0, value=1.5, step=0.01)
-theta_i = st.sidebar.slider("Ángulo de Incidencia θi (grados)", min_value=0.0, max_value=90.0, value=45.0, step=1.0)
+# --- BARRA LATERAL (CONTROLES) ---
+st.sidebar.header("Parámetros del Sistema (Snell)")
+n1 = st.sidebar.slider("Índice de refracción (Medio 1)", 1.0, 3.0, 1.0, 0.01)
+n2 = st.sidebar.slider("Índice de refracción (Medio 2)", 1.0, 3.0, 1.5, 0.01)
+theta_i_deg = st.sidebar.slider("Ángulo de Incidencia θ₁ (°)", 0.0, 89.9, 45.0, 0.1)
 
-# Llamada a nuestro motor matemático
-theta_t, tir, theta_c = calcular_snell(n1, n2, theta_i)
+st.sidebar.divider()
 
-# --- NUEVA SECCIÓN: LÓGICA GRÁFICA ---
-def graficar_sistema(n1, n2, theta_i, theta_t, tir):
-    """Genera la visualización 2D de los rayos usando Matplotlib"""
-    fig, ax = plt.subplots(figsize=(7, 7))
-    
-    # Dibujar los medios (colores de fondo)
-    ax.axhspan(0, 1, facecolor='#e6f2ff', alpha=0.8) # Medio 1
-    ax.axhspan(-1, 0, facecolor='#e6ffe6', alpha=0.8) # Medio 2
-    
-    # Frontera y línea normal
-    ax.axhline(0, color='black', linewidth=2)
-    ax.axvline(0, color='gray', linestyle='--')
-    
-    # Conversión de ángulos a radianes para trigonometría
-    rad_i = np.radians(theta_i)
-    
-    # 1. Rayo Incidente (Viene del cuadrante II hacia el origen)
-    x_inc, y_inc = -np.sin(rad_i), np.cos(rad_i)
-    ax.plot([x_inc, 0], [y_inc, 0], color='red', linewidth=3, label='Rayo Incidente')
-    
-    # 2. Rayo Reflejado (Va del origen al cuadrante I)
-    x_ref, y_ref = np.sin(rad_i), np.cos(rad_i)
-    ax.plot([0, x_ref], [0, y_ref], color='blue', linewidth=3, label='Rayo Reflejado')
-    
-    # 3. Rayo Refractado (Solo si no hay TIR)
-    if not tir:
-        rad_t = np.radians(theta_t)
-        x_tra, y_tra = np.sin(rad_t), -np.cos(rad_t)
-        ax.plot([0, x_tra], [0, y_tra], color='green', linewidth=3, label='Rayo Refractado')
-    else:
-        ax.text(0, -0.5, "Reflexión Total Interna", horizontalalignment='center', 
-                fontsize=14, color='red', weight='bold')
+st.sidebar.header("Principio de Fermat")
+st.sidebar.markdown("Encuentra la trayectoria real minimizando el camino óptico entre A y B.")
+x_interfaz = st.sidebar.slider("Desliza el punto de incidencia 'x' en la frontera", 
+                               min_value=-5.0, max_value=5.0, value=0.0, step=0.1)
 
-    # Configuraciones estéticas del gráfico
-    ax.set_xlim(-1.2, 1.2)
-    ax.set_ylim(-1.2, 1.2)
-    ax.set_aspect('equal') # Para que los ángulos no se deformen
-    ax.axis('off') # Quitamos los ejes numéricos para que se vea más limpio
-    ax.legend(loc='upper right', framealpha=0.9)
-    
-    # Textos de los índices de refracción
-    ax.text(-1.1, 0.8, f"n1 = {n1:.2f}", fontsize=12, weight='bold', bbox=dict(facecolor='white', alpha=0.7))
-    ax.text(-1.1, -0.8, f"n2 = {n2:.2f}", fontsize=12, weight='bold', bbox=dict(facecolor='white', alpha=0.7))
-    
-    return fig
+# --- CÁLCULOS MATEMÁTICOS BÁSICOS ---
+# 1. Ley de Snell
+theta_t_deg, tir, theta_critico = calcular_snell(n1, n2, theta_i_deg)
 
-# --- DESPLIEGUE DEL FRONTEND ---
-col1, col2 = st.columns([1, 1.5]) # Dividimos la pantalla en dos columnas
+# 2. Fermat (Puntos fijos para el análisis OPL)
+x_A, y_A = -4.0, 4.0
+x_B, y_B = 4.0, -4.0
+
+opl_puntual, x_array, opl_array, x_min, opl_min = analizar_camino_optico(
+    n1, n2, x_A, y_A, x_B, y_B, x_interfaz
+)
+
+# --- MOTOR DE GRÁFICOS Y CONTENEDORES ---
+col1, col2 = st.columns([1, 2.5])
 
 with col1:
-    st.subheader("Resultados Analíticos")
-    st.write(f"**Ángulo de Incidencia:** {theta_i}°")
+    st.subheader("Fundamento Teórico")
+    st.markdown("La Ley de Snell describe la refracción geométrica en la frontera:")
+    st.latex(r"n_1 \sin(\theta_i) = n_2 \sin(\theta_t)")
     
+    # Notificaciones del estado de Snell
     if tir:
-        st.error("¡Reflexión Total Interna!")
-        st.write(f"Ángulo crítico: **{theta_c:.2f}°**")
+        st.error(f"**Reflexión Total Interna (TIR)**\nEl ángulo crítico es {theta_critico:.2f}°.")
     else:
-        st.success("Refracción transmitida")
-        st.write(f"**Ángulo de Refracción:** {theta_t:.2f}°")
-        if theta_c:
-            st.info(f"Ángulo crítico de frontera: {theta_c:.2f}°")
+        st.success(f"**Ángulo de Refracción:** {theta_t_deg:.2f}°")
+        if theta_critico:
+            st.info(f"Ángulo crítico del sistema: {theta_critico:.2f}°")
+
+    st.divider()
+    
+    st.subheader("Principio de Fermat")
+    st.markdown("Establece que la luz sigue la trayectoria que minimiza el tiempo de viaje o **Camino Óptico (OPL)**:")
+    st.latex(r"OPL(x) = n_1 L_1 + n_2 L_2")
+    
+    st.metric(label="Camino Óptico Actual", value=f"{opl_puntual:.4f}")
+    st.metric(label="Mínimo Absoluto (Fermat)", value=f"{opl_min:.4f}")
+    
+    if abs(x_interfaz - x_min) < 0.15:
+        st.success(f"¡Trayectoria Real! x ≈ {x_min:.2f} cm cumple la Ley de Snell.")
+    else:
+        st.warning("Trayectoria virtual (físicamente imposible).")
 
 with col2:
-    # Renderizamos el gráfico generado
-    figura = graficar_sistema(n1, n2, theta_i, theta_t, tir)
-    st.pyplot(figura)
+    # --- CREACIÓN DE PESTAÑAS PARALELAS ---
+    tab1, tab2 = st.tabs(["1. Trazado de Rayos (Snell)", "2. Minimización de Camino Óptico (Fermat)"])
+    
+    # ----------------------------------------------------
+    # PESTAÑA 1: DEMOSTRACIÓN CLÁSICA DE SNELL
+    # ----------------------------------------------------
+    with tab1:
+        st.subheader("Visualización Geométrica de la Ley de Snell")
+        fig_snell, ax_snell = plt.subplots(figsize=(8, 5))
+        
+        # Frontera y normal
+        ax_snell.axhline(0, color='black', linewidth=2)
+        ax_snell.axvline(0, color='gray', linestyle=':', alpha=0.6)
+        
+        # Colores de fondo para identificar los medios
+        ax_snell.fill_between([-5, 5], 0, 5, color='blue', alpha=0.03)
+        ax_snell.fill_between([-5, 5], -5, 0, color='green', alpha=0.03)
+        ax_snell.text(-4.5, 4, f"Medio 1 (n₁ = {n1})", weight='bold')
+        ax_snell.text(-4.5, -4, f"Medio 2 (n₂ = {n2})", weight='bold')
+        
+        # Cálculo de vectores de los rayos (longitud fija de 4.5 unidades)
+        rad_i = np.radians(theta_i_deg)
+        x_inc = -np.sin(rad_i) * 4.5
+        y_inc = np.cos(rad_i) * 4.5
+        
+        # Dibujar Rayo Incidente hacia el origen (0,0)
+        ax_snell.plot([x_inc, 0], [y_inc, 0], color='red', linewidth=3, label="Rayo Incidente")
+        
+        # Dibujar Rayo Reflejado (siempre existe por reflexión parcial)
+        ax_snell.plot([0, -x_inc], [0, y_inc], color='orange', linewidth=2, linestyle='--', label="Rayo Reflejado")
+        
+        # Dibujar Rayo Refractado si no hay TIR
+        if not tir:
+            rad_t = np.radians(theta_t_deg)
+            x_ref = np.sin(rad_t) * 4.5
+            y_ref = -np.cos(rad_t) * 4.5
+            ax_snell.plot([0, x_ref], [0, y_ref], color='green', linewidth=3, label="Rayo Refractado")
+            
+        ax_snell.set_xlim(-5, 5)
+        ax_snell.set_ylim(-5, 5)
+        ax_snell.set_aspect('equal')
+        ax_snell.axis('off')
+        ax_snell.legend(loc='upper right')
+        
+        st.pyplot(fig_snell)
+
+    # ----------------------------------------------------
+    # PESTAÑA 2: DEMOSTRACIÓN DE FERMAT
+    # ----------------------------------------------------
+    with tab2:
+        st.subheader("Análisis de Trayectorias Variacionales")
+        
+        # Sub-columnas dentro de la pestaña para optimizar el espacio horizontal
+        sub_col1, sub_col2 = st.columns(2)
+        
+        with sub_col1:
+            st.markdown("**Camino Geométrico de Prueba**")
+            fig_geom, ax_geom = plt.subplots(figsize=(6, 5))
+            
+            ax_geom.axhline(0, color='black', linewidth=1.5)
+            ax_geom.axvline(x_interfaz, color='gray', linestyle=':', alpha=0.5)
+            
+            # Trayectorias lineales A -> x -> B
+            ax_geom.plot([x_A, x_interfaz], [y_A, 0], color='red', linewidth=2.5, label="Rayo Incidente")
+            ax_geom.plot([x_interfaz, x_B], [0, y_B], color='green', linewidth=2.5, label="Rayo Refractado")
+            
+            ax_geom.plot(x_A, y_A, 'ko', markersize=6)
+            ax_geom.text(x_A, y_A + 0.3, "Origen (A)", ha='center')
+            ax_geom.plot(x_B, y_B, 'ko', markersize=6)
+            ax_geom.text(x_B, y_B - 0.6, "Destino (B)", ha='center')
+            
+            ax_geom.set_xlim(-5, 5)
+            ax_geom.set_ylim(-5, 5)
+            ax_geom.set_aspect('equal')
+            ax_geom.axis('off')
+            
+            st.pyplot(fig_geom)
+            
+        with sub_col2:
+            st.markdown("**Comportamiento del Espacio de Configuración (OPL)**")
+            fig_fermat, ax_fermat = plt.subplots(figsize=(6, 5))
+            
+            ax_fermat.plot(x_array, opl_array, color='blue', linewidth=2, label="$OPL(x)$")
+            ax_fermat.plot(x_interfaz, opl_puntual, 'ro', markersize=8, label="Posición Actual")
+            ax_fermat.axvline(x_min, color='green', linestyle='--', alpha=0.7, label=f"Mínimo Teórico")
+            
+            ax_fermat.set_xlabel("Coordenada x en la frontera (cm)")
+            ax_fermat.set_ylabel("Camino Óptico Relativo")
+            ax_fermat.grid(True, alpha=0.3)
+            ax_fermat.legend(loc='upper center')
+            
+            st.pyplot(fig_fermat)
