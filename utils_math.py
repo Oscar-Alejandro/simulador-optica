@@ -126,7 +126,7 @@ def trazar_rayo_sistema(y0, theta0_deg, componentes, d_final=20.0):
             
         rayo_actual = np.dot(M_comp, rayo_actual)
         
-    # --- CORRECCIÓN: Propagación final después de la última lente ---
+    # --- Propagación final después de la última lente ---
     if len(componentes) > 0:
         M_trans_final = matriz_translacion(d_final)
         rayo_actual = np.dot(M_trans_final, rayo_actual)
@@ -360,3 +360,54 @@ def analizar_camino_optico(n1, n2, x_A, y_A, x_B, y_B, x_interfaz, resolucion=20
     opl_min = opl_array[indice_min]
     
     return opl_puntual, x_array, opl_array, x_min, opl_min
+
+import numpy as np
+
+def calcular_patron_difraccion(lam_nm, a_mm, b_mm, L_cm, tamano_cm, resolucion=500):
+    """
+    Calcula el patrón de difracción de Fraunhofer (campo lejano) 
+    para una apertura rectangular o una rendija simple.
+    """
+    # 1. Conversión de todas las unidades a metros (Sistema Internacional)
+    lam = lam_nm * 1e-9
+    a = a_mm * 1e-3
+    b = b_mm * 1e-3
+    L = L_cm * 1e-2
+    tamano = tamano_cm * 1e-2
+
+    # 2. Creación de la malla espacial en la pantalla (en metros)
+    x = np.linspace(-tamano / 2, tamano / 2, resolucion)
+    y = np.linspace(-tamano / 2, tamano / 2, resolucion)
+    X, Y = np.meshgrid(x, y)
+
+    # 3. Evaluación de la irradiancia
+    # NOTA: La función np.sinc(x) de Numpy ya incluye el factor Pi internamente, 
+    # es decir, calcula sin(pi*x)/(pi*x). Por lo tanto, no multiplicamos por np.pi aquí.
+    arg_x = (a * X) / (lam * L)
+    arg_y = (b * Y) / (lam * L)
+
+    # Intensidad normalizada: I(x,y) = I_0 * sinc^2(x) * sinc^2(y)
+    intensidad = (np.sinc(arg_x)**2) * (np.sinc(arg_y)**2)
+
+    return X, Y, intensidad
+import numpy as np
+
+def jones_a_euler_latex(Jx, Jy):
+    """Convierte un vector de Jones complejo a notación de Euler en LaTeX"""
+    def formatear_componente(z):
+        amp = np.abs(z)
+        fase = np.angle(z) # Devuelve la fase de -pi a pi
+        
+        if amp < 1e-4: 
+            return "0"
+        if abs(fase) < 1e-4: 
+            return f"{amp:.2f}"
+            
+        # Formato de Euler puro: A * e^{i * phi}
+        return f"{amp:.2f} e^{{i {fase:.2f}}}"
+    
+    comp_x = formatear_componente(Jx)
+    comp_y = formatear_componente(Jy)
+    
+    # Ensamblamos la matriz de columna
+    return r"\vec{E}_{salida} = \begin{pmatrix} " + comp_x + r" \\ " + comp_y + r" \end{pmatrix}"

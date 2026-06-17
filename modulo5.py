@@ -1,6 +1,7 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 from utils_math import (vector_jones_inicial, matriz_polarizador_lineal, 
                         matriz_retardador, curva_elipse_polarizacion)
 
@@ -8,6 +9,26 @@ st.set_page_config(page_title="Módulo V: Polarización", layout="wide")
 
 st.title("Módulo V: Polarización y Formalismo de Jones")
 st.markdown("Estudio matricial del estado de polarización de la luz y su modulación por elementos ópticos anisotrópicos.")
+
+# --- FUNCIÓN AUXILIAR (EULER) ---
+def jones_a_euler_latex(Jx, Jy):
+    """Convierte un vector de Jones complejo a notación de Euler en LaTeX"""
+    def formatear_componente(z):
+        amp = np.abs(z)
+        fase = np.angle(z) # Devuelve la fase de -pi a pi
+        
+        if amp < 1e-4: 
+            return "0"
+        if abs(fase) < 1e-4: 
+            return f"{amp:.2f}"
+            
+        return f"{amp:.2f} e^{{i {fase:.2f}}}"
+    
+    comp_x = formatear_componente(Jx)
+    comp_y = formatear_componente(Jy)
+    
+    return r"\vec{E}_{salida} = \begin{pmatrix} " + comp_x + r" \\ " + comp_y + r" \end{pmatrix}"
+
 
 # --- INICIALIZACIÓN DE MEMORIA ---
 if 'elementos_polarizacion' not in st.session_state:
@@ -26,7 +47,6 @@ with st.sidebar.form("form_elementos"):
     angulo = st.number_input("Ángulo de inclinación (grados)", value=45.0, step=5.0,
                              help="Ángulo del eje de transmisión o eje rápido respecto a la horizontal.")
     
-    # Si es retardador, necesitamos saber el desfase
     retardo = 0.0
     if tipo == "Lámina Retardadora":
         tipo_retardo = st.selectbox("Desfase (Retardo)", ["Lámina de Cuarto de Onda (λ/4)", "Lámina de Media Onda (λ/2)", "Personalizado"])
@@ -82,40 +102,64 @@ with col1:
     st.subheader("Análisis de Jones")
     st.markdown("Vector del Campo Eléctrico de Salida $\\vec{E}_{out}$:")
     
-    # Formateo de números complejos para renderizado en LaTeX
-    Ex_str = f"{np.real(Ex):.2f} {np.imag(Ex):+.2f}i"
-    Ey_str = f"{np.real(Ey):.2f} {np.imag(Ey):+.2f}i"
-    st.latex(r"\vec{E}_{out} = \begin{pmatrix} " + Ex_str + r" \\ " + Ey_str + r" \end{pmatrix}")
-    
+    # Se llama a la función corregida con las variables Ex y Ey
+    st.latex(jones_a_euler_latex(Ex, Ey))    
     st.metric(label="Irradiancia Relativa (I/I₀)", value=f"{intensidad:.4f}")
 
 with col2:
     st.subheader("Elipse de Polarización Trasversal")
-    fig, ax = plt.subplots(figsize=(6, 6))
     
-    # Extraer la curva paramétrica
-    Ex_t, Ey_t = curva_elipse_polarizacion(Ex, Ey)
+    # Añadimos el botón de animación justo arriba de la gráfica
+    animar = st.button("▶ Animar Propagación del Campo")
     
-    # Ejes de referencia
-    ax.axhline(0, color='gray', linestyle='--', alpha=0.5)
-    ax.axvline(0, color='gray', linestyle='--', alpha=0.5)
+    # Contenedor mágico de Streamlit que permite sobrescribir la imagen
+    grafica_placeholder = st.empty()
     
-    if intensidad < 1e-4:
-        # Extinción total
-        ax.text(0, 0, "Extinción Total\n(Oscuridad)", ha='center', va='center', color='red', fontsize=14, weight='bold')
+    def dibujar_fotograma(t_anim):
+        fig, ax = plt.subplots(figsize=(6, 6))
+        Ex_t, Ey_t = curva_elipse_polarizacion(Ex, Ey)
+        
+        ax.axhline(0, color='gray', linestyle='--', alpha=0.5)
+        ax.axvline(0, color='gray', linestyle='--', alpha=0.5)
+        
+        if intensidad < 1e-4:
+            ax.text(0, 0, "Extinción Total\n(Oscuridad)", ha='center', va='center', color='red', fontsize=14, weight='bold')
+        else:
+            # Dibujamos la trayectoria completa en tono suave
+            ax.plot(Ex_t, Ey_t, color='purple', linewidth=2.5, alpha=0.3)
+            
+            # Calculamos la posición instantánea dependiente del tiempo t
+            x_inst = np.abs(Ex) * np.cos(t_anim + np.angle(Ex))
+            y_inst = np.abs(Ey) * np.cos(t_anim + np.angle(Ey))
+            
+            # Dibujamos el vector giratorio
+            ax.plot(x_inst, y_inst, 'go', markersize=8)
+            ax.arrow(0, 0, x_inst, y_inst, color='green', alpha=0.8, head_width=0.05, length_includes_head=True)
+        
+        ax.set_xlim(-1.1, 1.1)
+        ax.set_ylim(-1.1, 1.1)
+        ax.set_aspect('equal')
+        ax.set_xlabel("Componente Ex")
+        ax.set_ylabel("Componente Ey")
+        ax.grid(True, alpha=0.3)
+        return fig
+
+    # Lógica de renderizado
+    if animar and intensidad >= 1e-4:
+        # Generamos los ángulos para dar dos vueltas completas a la elipse
+        fases_t = np.linspace(0, 4 * np.pi, 60) 
+        for t in fases_t:
+            fig = dibujar_fotograma(t)
+            grafica_placeholder.pyplot(fig)
+            plt.close(fig) # Cerramos la figura para liberar memoria
+            time.sleep(0.04) # Controla la velocidad de rotación
+            
+        # Lo dejamos en su estado inicial al finalizar el giro
+        fig_final = dibujar_fotograma(0.0)
+        grafica_placeholder.pyplot(fig_final)
+        plt.close(fig_final)
     else:
-        # Graficar la trayectoria del vector de campo eléctrico
-        ax.plot(Ex_t, Ey_t, color='purple', linewidth=2.5, label=r'$\vec{E}(t)$')
-        # Marcar un punto de referencia para indicar rotación
-        ax.plot(Ex_t[0], Ey_t[0], 'go', markersize=8, label='Inicio t=0')
-    
-    # Configuramos límites fijos estrictos para que el tamaño visual represente la intensidad real
-    ax.set_xlim(-1.1, 1.1)
-    ax.set_ylim(-1.1, 1.1)
-    ax.set_aspect('equal') # Crucial para que el círculo no se vea ovalado
-    ax.set_xlabel("Componente Ex")
-    ax.set_ylabel("Componente Ey")
-    ax.grid(True, alpha=0.3)
-    ax.legend(loc='upper right')
-    
-    st.pyplot(fig)
+        # Modo estático normal (cuando recién entras a la página o cambias un slider)
+        fig_estatica = dibujar_fotograma(0.0)
+        grafica_placeholder.pyplot(fig_estatica)
+        plt.close(fig_estatica)

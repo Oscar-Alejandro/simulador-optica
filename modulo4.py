@@ -1,99 +1,119 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-from utils_math import calcular_difraccion_rendija, calcular_difraccion_rectangular
+import matplotlib.colors as mcolors
+from utils_math import calcular_patron_difraccion
 
 # Configuración de la página web
 st.set_page_config(page_title="Módulo IV: Difracción", layout="wide")
 
-st.title("Módulo IV: Difracción de la Luz")
-st.markdown("Simulación del patrón de difracción de Fraunhofer en condiciones de campo lejano.")
+st.title("Módulo IV: Difracción de Fraunhofer")
+st.markdown("Estudio del ensanchamiento de la luz al atravesar aperturas finas (Límite de Campo Lejano).")
 
 # --- BARRA LATERAL (CONTROLES) ---
-st.sidebar.header("Configuración de la Apertura")
-geometria = st.sidebar.radio("Geometría del Obstáculo", ["Rendija Simple (1D)", "Apertura Rectangular (2D)"])
+st.sidebar.header("Geometría de la Apertura")
+geometria = st.sidebar.radio("Tipo de Apertura", ["Rendija Simple (1D)", "Apertura Rectangular (2D)"])
 
 st.sidebar.divider()
-st.sidebar.header("Parámetros Físicos")
 
+st.sidebar.header("Parámetros del Sistema")
 lam_nm = st.sidebar.slider("Longitud de Onda λ (nm)", 380, 750, 532, 1)
-ancho_a_mm = st.sidebar.slider("Ancho de la apertura 'a' (mm)", 0.02, 0.50, 0.08, 0.01)
+a_mm = st.sidebar.slider("Ancho de la apertura 'a' (mm)", 0.01, 0.50, 0.08, 0.01)
 
+# El alto de la rendija solo importa si es rectangular
 if geometria == "Apertura Rectangular (2D)":
-    altura_b_mm = st.sidebar.slider("Altura de la apertura 'b' (mm)", 0.02, 0.50, 0.12, 0.01)
+    b_mm = st.sidebar.slider("Alto de la apertura 'b' (mm)", 0.01, 0.50, 0.15, 0.01)
+else:
+    # Corrección: 0.0 anula el encogimiento en Y, haciendo que las franjas llenen la pantalla
+    b_mm = 0.0 
 
-L_cm = st.sidebar.slider("Distancia a la Pantalla L (cm)", 20, 300, 100, 10)
-tamano_cm = st.sidebar.slider("Ventana de Observación (cm)", 1.0, 15.0, 6.0, 0.5)
+L_cm = st.sidebar.slider("Distancia a la Pantalla L (cm)", 10, 500, 100, 10)
+tamano_cm = st.sidebar.slider("Ventana de Observación (cm)", 1.0, 10.0, 3.0, 0.5)
 
-# --- MOTOR DE GRÁFICOS Y ANÁLISIS ---
-col1, col2 = st.columns([1, 2.5])
+st.sidebar.divider()
 
-with col1:
-    st.subheader("Fundamento Teórico")
-    if geometria == "Rendija Simple (1D)":
-        st.markdown("La difracción de una rendija vertical distribuye la irradiancia horizontalmente siguiendo una función matemática $\text{sinc}^2$:")
-        st.latex(r"I(x) = I_0 \left[ \frac{\sin(\alpha)}{\alpha} \right]^2")
-        st.latex(r"\alpha = \frac{\pi a \sin\theta_x}{\lambda}")
-        
-        st.divider()
-        st.subheader("Análisis Cuantitativo")
-        st.markdown("El ancho total del máximo central (distancia entre los dos primeros mínimos oscuros a la izquierda y derecha) está definido por:")
-        st.latex(r"W = \frac{2\lambda L}{a}")
-        
-        # Cálculo analítico del ancho central
-        lam_m, a_m, L_m = lam_nm * 1e-9, ancho_a_mm * 1e-3, L_cm * 1e-2
-        W_cm = ((2.0 * lam_m * L_m) / a_m) * 100.0
-        st.metric(label="Ancho del Máximo Central (W)", value=f"{W_cm:.4f} cm")
-    else:
-        st.markdown("Para una apertura rectangular, las difracciones vertical y horizontal se superponen independientemente, modulando la irradiancia en ambos ejes:")
-        st.latex(r"I(x,y) = I_0 \;\text{sinc}^2(\alpha)\;\text{sinc}^2(\beta)")
-        st.latex(r"\beta = \frac{\pi b \sin\theta_y}{\lambda}")
-        st.info("**Sugerencia:** Modifica el ancho y la altura de forma asimétrica en el panel de control para observar cómo el patrón óptico se invierte geométricamente en la pantalla debido a la transformada de Fourier.")
+st.sidebar.header("Visualización")
+escala = st.sidebar.radio("Escala de Intensidad", ["Lineal", "Logarítmica"], 
+                          help="La escala logarítmica permite visualizar los máximos secundarios de baja intensidad.")
 
-with col2:
-    # Ejecución de los motores analíticos
-    if geometria == "Rendija Simple (1D)":
-        X, Y, intensidad = calcular_difraccion_rendija(lam_nm, ancho_a_mm, L_cm, tamano_cm)
-    else:
-        X, Y, intensidad = calcular_difraccion_rectangular(lam_nm, ancho_a_mm, altura_b_mm, L_cm, tamano_cm)
+# --- 1. SECCIÓN SUPERIOR: FUNDAMENTO TEÓRICO ---
+st.subheader("Fundamento Teórico")
+st.markdown("En la aproximación de Fraunhofer (campo lejano), la irradiancia proyectada por una apertura rectangular está modelada por funciones *sinc*:")
 
-    # Selector cromático según longitud de onda
-    if lam_nm < 495: colormap, linecolor = 'Blues_r', 'blue'
-    elif lam_nm < 570: colormap, linecolor = 'Greens_r', 'green'
-    elif lam_nm < 620: colormap, linecolor = 'Oranges_r', 'orange'
-    else: colormap, linecolor = 'Reds_r', 'red'
+col_eq1, col_eq2 = st.columns(2)
+with col_eq1:
+    st.latex(r"I(x,y) = I_0 \text{sinc}^2(\alpha) \text{sinc}^2(\beta)")
+with col_eq2:
+    st.latex(r"\alpha = \frac{\pi a x}{\lambda L}, \quad \beta = \frac{\pi b y}{\lambda L}")
 
-    tab1, tab2 = st.tabs(["Patrón de Difracción (2D)", "Perfil de Irradiancia (1D)"])
+st.divider()
+
+# --- 2. SECCIÓN CENTRAL: GRÁFICAS LADO A LADO ---
+st.subheader("Visualización del Patrón de Difracción")
+
+X, Y, intensidad = calcular_patron_difraccion(lam_nm, a_mm, b_mm, L_cm, tamano_cm)
+
+# Definir colores
+if lam_nm < 495: colormap, linecolor = 'Blues', 'blue'
+elif lam_nm < 570: colormap, linecolor = 'Greens', 'green'
+elif lam_nm < 620: colormap, linecolor = 'Oranges', 'orange'
+else: colormap, linecolor = 'Reds', 'red'
+
+# --- LÓGICA DE ESCALAS ---
+# Creamos dos contenedores para las gráficas
+col_2d, col_1d = st.columns(2, gap="large")
+
+if escala == "Logarítmica":
+    norm = mcolors.LogNorm(vmin=1e-3, vmax=1.0)
+    plot_data = np.clip(intensidad, 1e-4, 1.0)
+else:
+    # Corrección de contraste: vmax=0.4 satura el pico central 
+    # para que las franjas secundarias brillen más en escala lineal
+    norm = mcolors.Normalize(vmin=0.0, vmax=0.4) 
+    plot_data = intensidad
+
+with col_2d:
+    st.markdown(f"**Proyección 2D (Escala {escala})**")
+    fig_2d, ax_2d = plt.subplots(figsize=(6, 4.5))
+    cax = ax_2d.imshow(intensidad, extent=[-tamano_cm/2, tamano_cm/2, -tamano_cm/2, tamano_cm/2], 
+                       cmap=colormap, origin='lower', aspect='auto', norm=norm)
+    ax_2d.set_xlabel("X (cm)"); ax_2d.set_ylabel("Y (cm)")
+    fig_2d.colorbar(cax, ax=ax_2d, label="Intensidad")
+    st.pyplot(fig_2d)
+
+with col_1d:
+    st.markdown(f"**Perfil en X (Escala {escala})**")
+    fig_1d, ax_1d = plt.subplots(figsize=(6, 4.5))
+    eje_x_cm = X[0, :] * 100.0
+    perfil_1d = plot_data[plot_data.shape[0] // 2, :]
     
-    with tab1:
-        st.subheader("Visualización en la Pantalla de Proyección")
-        fig_2d, ax_2d = plt.subplots(figsize=(8, 5))
-        
-        cax = ax_2d.imshow(intensidad, extent=[-tamano_cm/2, tamano_cm/2, -tamano_cm/2, tamano_cm/2], 
-                           cmap=colormap, origin='lower', aspect='auto', vmax=0.15 if geometria == "Apertura Rectangular (2D)" else 1.0)
-        # Nota: Usamos un vmax bajo en la rectangular para poder apreciar los lóbulos secundarios que son muy tenues
-        
-        ax_2d.set_xlabel("X (cm)")
-        ax_2d.set_ylabel("Y (cm)")
-        ax_2d.set_title(f"Patrón de Difracción de Fraunhofer (λ = {lam_nm} nm)")
-        fig_2d.colorbar(cax, ax=ax_2d, label="Intensidad Relativa")
-        st.pyplot(fig_2d)
-
-    with tab2:
-        st.subheader("Corte Transversal Horizontal (Y = 0)")
-        fig_1d, ax_1d = plt.subplots(figsize=(8, 4))
-        
-        # Extraemos la fila central para ver los lóbulos oscilantes a lo largo de X
-        fila_centro_y = intensidad.shape[0] // 2
-        intensidad_1d = intensidad[fila_centro_y, :]
-        eje_x_cm = X[0, :] * 100.0  # Conversión rigurosa a centímetros
-        
-        ax_1d.plot(eje_x_cm, intensidad_1d, color=linecolor, linewidth=2)
-        ax_1d.fill_between(eje_x_cm, intensidad_1d, color=linecolor, alpha=0.15)
-        
-        ax_1d.set_xlabel("Posición en la pantalla X (cm)")
-        ax_1d.set_ylabel("Intensidad I/I₀")
-        ax_1d.set_xlim(-tamano_cm/2, tamano_cm/2)
+    ax_1d.plot(eje_x_cm, perfil_1d, color=linecolor, linewidth=2)
+    ax_1d.fill_between(eje_x_cm, perfil_1d, 1e-4 if escala=="Logarítmica" else 0, color=linecolor, alpha=0.2)
+    
+    if escala == "Logarítmica":
+        ax_1d.set_yscale('log')
+        ax_1d.set_ylim(1e-4, 1.1)
+    else:
         ax_1d.set_ylim(0, 1.05)
-        ax_1d.grid(True, alpha=0.3)
-        st.pyplot(fig_1d)
+        
+    ax_1d.set_xlim(-tamano_cm/2, tamano_cm/2)
+    ax_1d.set_xlabel("Posición X (cm)")
+    ax_1d.set_ylabel("Intensidad")
+    ax_1d.grid(True, alpha=0.4)
+    st.pyplot(fig_1d)
+
+st.divider()
+
+# --- 3. SECCIÓN INFERIOR: ANÁLISIS CUANTITATIVO ---
+st.subheader("Análisis Cuantitativo")
+st.markdown("El ancho del máximo central (distancia entre los primeros mínimos a ambos lados) es el principal indicador del ensanchamiento por difracción:")
+st.latex(r"W = \frac{2\lambda L}{a}")
+
+lam_m, L_m, a_m = lam_nm * 1e-9, L_cm * 1e-2, a_mm * 1e-3
+ancho_central_cm = ((2 * lam_m * L_m) / a_m) * 100.0
+
+col_metric1, col_metric2, col_metric3 = st.columns(3)
+with col_metric1:
+    st.metric(label="Ancho del Máximo Central (W)", value=f"{ancho_central_cm:.3f} cm")
+with col_metric2:
+    st.metric(label="Posición de los Primeros Mínimos", value=f"± {ancho_central_cm / 2:.3f} cm")

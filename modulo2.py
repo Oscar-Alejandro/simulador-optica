@@ -33,7 +33,22 @@ x_B, y_B = 4.0, -4.0
 opl_puntual, x_array, opl_array, x_min, opl_min = analizar_camino_optico(
     n1, n2, x_A, y_A, x_B, y_B, x_interfaz
 )
-
+def calcular_fresnel(n1, n2, theta_i_rad):
+    """Devuelve Reflectancia (R) y Transmitancia (T) basadas en Fresnel."""
+    sin_t = (n1 / n2) * np.sin(theta_i_rad)
+    if sin_t >= 1.0:
+        return 1.0, 0.0  # Reflexión Total Interna
+    
+    theta_t_rad = np.arcsin(sin_t)
+    if theta_i_rad == 0.0:
+        R = ((n1 - n2) / (n1 + n2))**2
+        return R, 1.0 - R
+        
+    rs = (n1 * np.cos(theta_i_rad) - n2 * np.cos(theta_t_rad)) / (n1 * np.cos(theta_i_rad) + n2 * np.cos(theta_t_rad))
+    rp = (n1 * np.cos(theta_t_rad) - n2 * np.cos(theta_i_rad)) / (n1 * np.cos(theta_t_rad) + n2 * np.cos(theta_i_rad))
+    
+    R = (rs**2 + rp**2) / 2.0
+    return R, 1.0 - R
 # --- MOTOR DE GRÁFICOS Y CONTENEDORES ---
 col1, col2 = st.columns([1, 2.5])
 
@@ -125,19 +140,59 @@ with col2:
             fig_geom, ax_geom = plt.subplots(figsize=(6, 5))
             
             ax_geom.axhline(0, color='black', linewidth=1.5)
-            ax_geom.axvline(x_interfaz, color='gray', linestyle=':', alpha=0.5)
+            # Normal en el punto de incidencia
+            ax_geom.axvline(x_interfaz, color='gray', linestyle='-.', alpha=0.6)
             
-            # Trayectorias lineales A -> x -> B
-            ax_geom.plot([x_A, x_interfaz], [y_A, 0], color='red', linewidth=2.5, label="Rayo Incidente")
-            ax_geom.plot([x_interfaz, x_B], [0, y_B], color='green', linewidth=2.5, label="Rayo Refractado")
+            # 1. CÁLCULO DE ÁNGULOS DEL RAYO DE PRUEBA
+            # Vector Incidente (de A hacia la interfaz)
+            vec_inc = np.array([x_interfaz - x_A, 0 - y_A])
+            ang_inc_rad = np.arctan(abs(vec_inc[0]) / abs(vec_inc[1])) # Ángulo con la vertical
             
+            # Vector Transmitido (de la interfaz hacia B)
+            vec_trans = np.array([x_B - x_interfaz, y_B - 0])
+            ang_trans_rad = np.arctan(abs(vec_trans[0]) / abs(vec_trans[1]))
+            
+            # 2. CÁLCULO DE INTENSIDADES (FRESNEL)
+            R, T = calcular_fresnel(n1, n2, ang_inc_rad)
+            grosor_base = 4.0
+            
+            # 3. DIBUJO DE RAYOS (Con grosores dinámicos)
+            # Rayo Incidente (100% de intensidad)
+            ax_geom.plot([x_A, x_interfaz], [y_A, 0], color='red', linewidth=grosor_base, label="Incidente")
+            # Rayo Reflejado (Se dibuja hacia arriba, ancho = R%)
+            x_refl = x_interfaz + (x_interfaz - x_A)
+            ax_geom.plot([x_interfaz, x_refl], [0, y_A], color='orange', linestyle='--', linewidth=grosor_base * R, alpha=0.8)
+            # Rayo Refractado hacia B (ancho = T%)
+            ax_geom.plot([x_interfaz, x_B], [0, y_B], color='green', linewidth=grosor_base * T, label="Transmitido")
+            
+            # 4. DIBUJO DE ARCOS DE ÁNGULOS Y ETIQUETAS
+            r_arc = 1.0 # Radio del arco
+            # Arco incidente
+            ang_normal_up = np.pi/2
+            ang_vec_inc = np.arctan2(-vec_inc[1], -vec_inc[0]) # Invertido para dibujar desde el origen
+            t_arc_i = np.linspace(ang_normal_up, ang_vec_inc, 20)
+            ax_geom.plot(x_interfaz + r_arc*np.cos(t_arc_i), r_arc*np.sin(t_arc_i), color='red', lw=1.5)
+            ax_geom.text(x_interfaz + 1.3*r_arc*np.cos((ang_normal_up+ang_vec_inc)/2), 
+                         1.3*r_arc*np.sin((ang_normal_up+ang_vec_inc)/2), 
+                         f"$\\theta_i = {np.degrees(ang_inc_rad):.1f}^\\circ$", color='red', weight='bold')
+
+            # Arco transmitido
+            ang_normal_down = -np.pi/2
+            ang_vec_trans = np.arctan2(vec_trans[1], vec_trans[0])
+            t_arc_t = np.linspace(ang_normal_down, ang_vec_trans, 20)
+            ax_geom.plot(x_interfaz + r_arc*np.cos(t_arc_t), r_arc*np.sin(t_arc_t), color='green', lw=1.5)
+            ax_geom.text(x_interfaz + 1.3*r_arc*np.cos((ang_normal_down+ang_vec_trans)/2), 
+                         1.3*r_arc*np.sin((ang_normal_down+ang_vec_trans)/2), 
+                         f"$\\theta_t = {np.degrees(ang_trans_rad):.1f}^\\circ$", color='green', weight='bold')
+
+            # Puntos fijos A y B
             ax_geom.plot(x_A, y_A, 'ko', markersize=6)
-            ax_geom.text(x_A, y_A + 0.3, "Origen (A)", ha='center')
+            ax_geom.text(x_A, y_A + 0.3, "A", ha='center')
             ax_geom.plot(x_B, y_B, 'ko', markersize=6)
-            ax_geom.text(x_B, y_B - 0.6, "Destino (B)", ha='center')
+            ax_geom.text(x_B, y_B - 0.6, "B", ha='center')
             
-            ax_geom.set_xlim(-5, 5)
-            ax_geom.set_ylim(-5, 5)
+            ax_geom.set_xlim(-6, 6)
+            ax_geom.set_ylim(-6, 6)
             ax_geom.set_aspect('equal')
             ax_geom.axis('off')
             
