@@ -59,7 +59,9 @@ def calcular_fresnel(n1, n2, theta_i_deg, theta_t_deg, tir):
 
     return R_s, R_p, T_s, T_p
 
- # ==========================================
+import numpy as np
+
+# ==========================================
 # MÓDULO I: ÓPTICA GEOMÉTRICA (MATRICES ABCD)
 # ==========================================
 
