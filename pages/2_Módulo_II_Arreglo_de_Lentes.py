@@ -130,7 +130,6 @@ with col2:
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.axhline(0, color='black', linestyle='-.', alpha=0.6, label='Eje Óptico')
     
-    # Dibujar el Objeto usando la nueva convención
     if modo == "Formación de Imagen (Objeto)":
         dibujar_flecha(ax, 0, y0, tipo="objeto")
 
@@ -158,7 +157,6 @@ with col2:
             ax.plot([z_acumulado, z_acumulado], [-8, 8], color=color_lente, linestyle=estilo, linewidth=2)
             ax.text(z_acumulado, 8.2, f"$L_{i+1}$ (f={f})", ha='center', va='bottom', color=color_lente, weight='bold')
 
-        # --- CÁLCULO DE INTERSECCIÓN Y DIBUJO DE IMAGEN (REAL O VIRTUAL) ---
         if modo == "Formación de Imagen (Objeto)" and len(rayos_trazados) >= 2:
             z_rayo1, y_rayo1 = rayos_trazados[0]
             z_rayo2, y_rayo2 = rayos_trazados[1]
@@ -179,21 +177,17 @@ with col2:
                     z_imagen = (c2 - c1) / (m1 - m2)
                     y_imagen = m1 * z_imagen + c1
                     
-                    # Decisión Lógica: ¿Real o Virtual?
                     if z_imagen < z_acumulado:
-                        # VIRTUAL: Se forma antes o dentro del sistema. Se prolongan líneas punteadas hacia atrás.
                         ax.plot([z_imagen, z_b], [y_imagen, y1_b], color='gray', linestyle='--', linewidth=1.5, alpha=0.5)
                         ax.plot([z_imagen, z_b], [y_imagen, y2_b], color='gray', linestyle='--', linewidth=1.5, alpha=0.5, label='Extensión Virtual')
                         dibujar_flecha(ax, z_imagen, y_imagen, tipo="virtual")
                     else:
-                        # REAL: Se forma después de la última lente (fuera del sistema).
                         dibujar_flecha(ax, z_imagen, y_imagen, tipo="real")
 
-        # Ajuste dinámico de los límites de X
         limite_izquierdo = min(-2, z_imagen - 2) if (modo == "Formación de Imagen (Objeto)" and 'z_imagen' in locals() and z_imagen < z_acumulado) else -2
         limite_derecho = max(z_vals) + 5
         if modo == "Formación de Imagen (Objeto)" and 'z_imagen' in locals() and z_imagen >= z_acumulado:
-            limite_derecho = max(limite_derecho, z_imagen + 5) # Expandir si la imagen real queda muy lejos
+            limite_derecho = max(limite_derecho, z_imagen + 5) 
             
         ax.set_xlim(limite_izquierdo, limite_derecho)
         
@@ -209,10 +203,19 @@ with col2:
     ax.set_ylabel('Altura Y (cm)')
     ax.grid(True, alpha=0.3)
     
-    # Manejo seguro de la leyenda para evitar duplicados
     handles, labels = ax.get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     if by_label:
         ax.legend(by_label.values(), by_label.keys(), loc='lower left')
     
     st.pyplot(fig)
+
+    # --- NUEVO BLOQUE DE DATOS ANALÍTICOS DE LA IMAGEN ---
+    if modo == "Formación de Imagen (Objeto)" and len(st.session_state.componentes) > 0 and 'z_imagen' in locals():
+        magnificacion = y_imagen / y0
+        tipo_imagen = "Virtual" if z_imagen < z_acumulado else "Real"
+        
+        st.info(f"📊 **Datos Analíticos de la Imagen ({tipo_imagen}):** \n"
+                f"**Posición (z):** {z_imagen:.2f} cm | "
+                f"**Altura (y):** {y_imagen:.2f} cm | "
+                f"**Magnificación (m):** {magnificacion:.2f}X")

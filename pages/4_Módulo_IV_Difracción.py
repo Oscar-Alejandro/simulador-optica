@@ -2,8 +2,7 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-from utils_math import calcular_patron_difraccion
-
+from utils_math import calcular_difraccion_rendija, calcular_difraccion_rectangular
 # Configuración de la página web
 st.set_page_config(page_title="Módulo IV: Difracción", layout="wide")
 
@@ -42,16 +41,21 @@ st.markdown("En la aproximación de Fraunhofer (campo lejano), la irradiancia pr
 
 col_eq1, col_eq2 = st.columns(2)
 with col_eq1:
-    st.latex(r"I(x,y) = I_0 \text{sinc}^2(\alpha) \text{sinc}^2(\beta)")
+    st.latex(r"\vphantom{\Bigg|} I(x,y) = I_0 \text{sinc}^2(\alpha) \text{sinc}^2(\beta)")
 with col_eq2:
-    st.latex(r"\alpha = \frac{\pi a x}{\lambda L}, \quad \beta = \frac{\pi b y}{\lambda L}")
-
+    st.latex(r"\vphantom{\Bigg|} \alpha = \frac{\pi a x}{\lambda L}, \quad \beta = \frac{\pi b y}{\lambda L}")
 st.divider()
 
 # --- 2. SECCIÓN CENTRAL: GRÁFICAS LADO A LADO ---
 st.subheader("Visualización del Patrón de Difracción")
 
-X, Y, intensidad = calcular_patron_difraccion(lam_nm, a_mm, b_mm, L_cm, tamano_cm)
+# --- LÓGICA DE SELECCIÓN DE GEOMETRÍA ---
+if geometria == "Rendija Simple (1D)":
+    # Llama a la función rigurosa de 1D (no requiere b_mm)
+    X, Y, intensidad = calcular_difraccion_rendija(lam_nm, a_mm, L_cm, tamano_cm)
+else:
+    # Llama a la función rigurosa de 2D (requiere a_mm y b_mm)
+    X, Y, intensidad = calcular_difraccion_rectangular(lam_nm, a_mm, b_mm, L_cm, tamano_cm)
 
 # Definir colores
 if lam_nm < 495: colormap, linecolor = 'Blues', 'blue'
@@ -111,9 +115,32 @@ st.latex(r"W = \frac{2\lambda L}{a}")
 
 lam_m, L_m, a_m = lam_nm * 1e-9, L_cm * 1e-2, a_mm * 1e-3
 ancho_central_cm = ((2 * lam_m * L_m) / a_m) * 100.0
+x1_cm = ancho_central_cm / 2.0
+
+# Calculamos analíticamente dónde debería estar el pico para saber si cabe en la pantalla
+posicion_esperada_pico_cm = 1.4303 * x1_cm
 
 col_metric1, col_metric2, col_metric3 = st.columns(3)
 with col_metric1:
     st.metric(label="Ancho del Máximo Central (W)", value=f"{ancho_central_cm:.3f} cm")
 with col_metric2:
-    st.metric(label="Posición de los Primeros Mínimos", value=f"± {ancho_central_cm / 2:.3f} cm")
+    st.metric(label="Posición de los Primeros Mínimos", value=f"± {x1_cm:.3f} cm")
+
+# Validación: ¿El pico secundario está dentro del arreglo numérico actual?
+if posicion_esperada_pico_cm > (tamano_cm / 2.0):
+    with col_metric3:
+        st.metric(label="Irradiancia 1er Máx. Secundario", value="Ampliar ventana")
+else:
+    # Extraemos el perfil transversal exacto de la matriz de intensidad
+    eje_x_cm = X[0, :] * 100.0
+    perfil_real_1d = intensidad[intensidad.shape[0] // 2, :]
+    
+    # Buscamos el valor máximo en la región que está más allá del primer mínimo
+    mascara_region_secundaria = eje_x_cm > (x1_cm * 1.01)
+    if np.any(mascara_region_secundaria):
+        irradiancia_secundaria = np.max(perfil_real_1d[mascara_region_secundaria])
+    else:
+        irradiancia_secundaria = 0.0
+        
+    with col_metric3:
+        st.metric(label="Irradiancia 1er Máx. Secundario", value=f"{irradiancia_secundaria:.4f} I₀")

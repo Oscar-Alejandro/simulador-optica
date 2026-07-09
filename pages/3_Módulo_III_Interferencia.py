@@ -32,9 +32,9 @@ if tipo_experimento == "Doble Rendija de Young (Div. Frente)":
     
     col_eq1, col_eq2 = st.columns(2)
     with col_eq1:
-        st.latex(r"I(y) = 4I_0 \cos^2\left(\frac{\Delta \phi}{2}\right)")
+        st.latex(r"\vphantom{\Bigg|} I(y) = 4I_0 \cos^2 \left( \frac{\Delta\phi}{2} \right)")
     with col_eq2:
-        st.latex(r"\Delta \phi = \frac{2\pi}{\lambda}(r_2 - r_1)")
+        st.latex(r"\vphantom{\Bigg|} \Delta\phi = \frac{2\pi}{\lambda}(r_2 - r_1)")
         
     st.info("**Nota:** Se calculan distancias vectoriales exactas en el espacio, no solo aproximaciones paraxiales.")
     st.divider()
@@ -76,25 +76,49 @@ if tipo_experimento == "Doble Rendija de Young (Div. Frente)":
 
     st.divider()
 
-    # --- 3. SECCIÓN INFERIOR: ANÁLISIS CUANTITATIVO ---
-    st.subheader("Análisis Cuantitativo")
-    st.markdown("En la región central, la separación teórica entre franjas brillantes consecutivas es:")
-    st.latex(r"\Delta y \approx \frac{\lambda L}{d}")
+   # --- 3. SECCIÓN INFERIOR: ANÁLISIS CUANTITATIVO ---
+    st.subheader("Análisis Cuantitativo: Paraxial vs Exacto")
+    st.markdown("Comparativa entre el modelo aproximado de los libros de texto y la solución geométrica exacta implementada en este simulador:")
     
+    col_eq1, col_eq2 = st.columns(2)
+    with col_eq1:
+        st.markdown("**Aproximación Paraxial (Ángulos pequeños):**")
+        st.latex(r"\Delta y \approx \frac{\lambda L}{d}")
+    with col_eq2:
+        st.markdown("**Solución Exacta (Intersección Hiperbólica):**")
+        st.latex(r"y_1 = \sqrt{\frac{\lambda^2 L^2}{d^2 - \lambda^2} + \frac{\lambda^2}{4}}")
+    
+    # Conversión de unidades a metros para el cálculo
     lam_m, L_m, d_m = lam_nm * 1e-9, L_cm * 1e-2, d_mm * 1e-3
-    delta_y_cm = ((lam_m * L_m) / d_m) * 100.0
     
-    col_metric1, col_metric2 = st.columns(2)
+    # Cálculo Paraxial
+    delta_y_paraxial_cm = ((lam_m * L_m) / d_m) * 100.0
+    
+    # Cálculo Exacto
+    y1_exacto_cm = np.sqrt((lam_m**2 * L_m**2) / (d_m**2 - lam_m**2) + (lam_m**2 / 4.0)) * 100.0
+    
+    # Cálculo del error (qué tanto se equivoca la aproximación)
+    error_porcentual = abs(y1_exacto_cm - delta_y_paraxial_cm) / y1_exacto_cm * 100.0
+    
+    # Mostrar métricas
+    col_metric1, col_metric2, col_metric3 = st.columns(3)
     with col_metric1:
-        st.metric(label="Separación Teórica (Δy)", value=f"{delta_y_cm:.4f} cm")
-
+        st.metric(label="Predicción Paraxial (Δy)", value=f"{delta_y_paraxial_cm:.4f} cm")
+    with col_metric2:
+        st.metric(label="Posición Exacta (Simulador)", value=f"{y1_exacto_cm:.4f} cm")
+    #with col_metric3:
+     #   st.metric(label="Error de Aproximación", value=f"{error_porcentual:.4f} %")
 else:
     # --- CONTROLES DE MICHELSON ---
     from utils_math import calcular_patron_michelson
     
     st.sidebar.header("Parámetros del Sistema (Michelson)")
     lam_nm = st.sidebar.slider("Longitud de Onda λ (nm)", 380, 750, 632, 1, help="Rojo He-Ne por defecto.")
-    delta_d_um = st.sidebar.slider("Desplazamiento del Espejo M2 (μm)", 0.0, 50.0, 10.0, 0.1)
+    delta_d_um = st.sidebar.slider(
+    "Desplazamiento del Espejo M2 (μm)", 
+    0.000, 50.000, 10.000, 0.001, 
+    format="%.3f"  
+)
     f_cm = st.sidebar.slider("Focal de Lente Proyectora f (cm)", 5.0, 50.0, 20.0, 1.0)
     tamano_cm = st.sidebar.slider("Ventana de Observación (cm)", 1.0, 20.0, 10.0, 0.5)
 
@@ -143,12 +167,19 @@ else:
 
     st.divider()
 
-    # --- 3. SECCIÓN INFERIOR: ANÁLISIS CUANTITATIVO ---
+    # --- 3. SECCIÓN INFERIOR: ANÁLISIS DINÁMICO ---
     st.subheader("Análisis Dinámico")
-    st.markdown("Cada vez que el espejo se desplaza exactamente **$\lambda/2$**, el patrón central cambia de brillante a oscuro o viceversa, permitiendo medir distancias a escala nanométrica.")
+    st.markdown("Cada vez que el espejo se desplaza exactamente **$\lambda/2$**, el patrón central cambia de brillante a oscuro o viceversa.")
     
     paso_lambda = (lam_nm * 1e-3) / 2.0  # en micras
+    
+    # Extraer el valor exacto del centro de la matriz de intensidad
+    centro_idx_y = intensidad.shape[0] // 2
+    centro_idx_x = intensidad.shape[1] // 2
+    intensidad_central = intensidad[centro_idx_y, centro_idx_x]
     
     col_metric1, col_metric2 = st.columns(2)
     with col_metric1:
         st.metric(label="Sensibilidad (λ/2)", value=f"{paso_lambda:.4f} μm")
+    with col_metric2:
+        st.metric(label="Intensidad Relativa Central", value=f"{intensidad_central:.3f}")
