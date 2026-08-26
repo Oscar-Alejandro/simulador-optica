@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 from utils_math import calcular_snell, analizar_camino_optico, calcular_fresnel
 
 # Configuración de la página web
-st.set_page_config(page_title="Módulo II: Reflexión y Refracción", layout="wide")
+st.set_page_config(page_title="Módulo I: Reflexión y Refracción", layout="wide")
 
-st.title("Módulo II: Reflexión y Refracción")
+st.title("Módulo I: Reflexión y Refracción")
 st.markdown("Estudio de la Ley de Snell, verificación del Principio de Fermat y aplicaciones en Guías de Onda.")
 
 # --- BARRA LATERAL (CONTROLES) ---

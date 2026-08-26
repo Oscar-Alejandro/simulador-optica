@@ -35,9 +35,9 @@ def dibujar_flecha(ax, z, y, tipo="objeto"):
 
 
 # --- INTERFAZ STREAMLIT ---
-st.set_page_config(page_title="Módulo I: Óptica Geométrica", layout="wide")
+st.set_page_config(page_title="Módulo II: Óptica Geométrica", layout="wide")
 
-st.title("Módulo I: Formación de Imágenes y Trazado Paraxial")
+st.title("Módulo II: Formación de Imágenes y Trazado Paraxial")
 st.markdown("Banco óptico virtual para el diseño de sistemas formadores de imágenes.")
 
 if 'componentes' not in st.session_state:
