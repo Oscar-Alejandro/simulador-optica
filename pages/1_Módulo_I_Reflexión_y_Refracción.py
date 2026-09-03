@@ -19,14 +19,15 @@ st.sidebar.divider()
 
 st.sidebar.header("Principio de Fermat")
 st.sidebar.markdown("Encuentra la trayectoria real minimizando el camino óptico entre A y B.")
+# 2. Ajustar los límites del deslizador para que barra exclusivamente desde A hasta B
 x_interfaz = st.sidebar.slider("Desliza el punto de incidencia 'x' en la frontera", 
-                               min_value=-5.0, max_value=5.0, value=0.0, step=0.1)
-
+                               min_value=0.0, max_value=8.0, value=4.0, step=0.1)
 # --- CÁLCULOS MATEMÁTICOS BÁSICOS ---
 theta_t_deg, tir, theta_critico = calcular_snell(n1, n2, theta_i_deg)
 
-x_A, y_A = -4.0, 4.0
-x_B, y_B = 4.0, -4.0
+# 1. Fijar la proyección del punto A en x=0 y mover B a una distancia 'd' (ej. d = 8.0)
+x_A, y_A = 0.0, 4.0
+x_B, y_B = 8.0, -4.0
 
 opl_puntual, x_array, opl_array, x_min, opl_min = analizar_camino_optico(
     n1, n2, x_A, y_A, x_B, y_B, x_interfaz
