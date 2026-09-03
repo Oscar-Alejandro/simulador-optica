@@ -7,13 +7,14 @@ from utils_math import calcular_snell, analizar_camino_optico, calcular_fresnel
 st.set_page_config(page_title="Módulo I: Reflexión y Refracción", layout="wide")
 
 st.title("Módulo I: Reflexión y Refracción")
-st.markdown("Estudio de la Ley de Snell, verificación del Principio de Fermat y aplicaciones en Guías de Onda.")
+st.markdown("Estudio de la Ley de Snell y verificación del Principio de Fermat.")
 
 # --- BARRA LATERAL (CONTROLES) ---
 st.sidebar.header("Parámetros del Sistema (Snell)")
-n1 = st.sidebar.slider("Índice de refracción (Medio 1 / Núcleo)", 1.0, 3.0, 1.5, 0.01)
-n2 = st.sidebar.slider("Índice de refracción (Medio 2 / Revestimiento)", 1.0, 3.0, 1.3, 0.01)
-theta_i_deg = st.sidebar.slider("Ángulo de Incidencia θ₁ (°)", 0.00, 89.99, 75.00, 0.01)
+n1 = st.sidebar.slider("Índice de refracción (Medio 1)", 1.0, 3.0, 1.0, 0.01)
+# Restricción: n2 siempre será mayor o igual a n1 para evitar Reflexión Total Interna
+n2 = st.sidebar.slider("Índice de refracción (Medio 2)", float(n1), 3.0, max(1.5, float(n1)), 0.01)
+theta_i_deg = st.sidebar.slider("Ángulo de Incidencia θ₁ (°)", 0.00, 89.99, 45.00, 0.01)
 st.sidebar.divider()
 
 st.sidebar.header("Principio de Fermat")
@@ -39,12 +40,7 @@ with col1:
     st.markdown("La Ley de Snell describe la refracción geométrica en la frontera:")
     st.latex(r"n_1 \sin(\theta_i) = n_2 \sin(\theta_t)")
     
-    if tir:
-        st.error(f"**Reflexión Total Interna (TIR)**\nEl ángulo crítico es {theta_critico:.2f}°.")
-    else:
-        st.success(f"**Ángulo de Refracción:** {theta_t_deg:.2f}°")
-        if theta_critico:
-            st.info(f"Ángulo crítico del sistema: {theta_critico:.2f}°")
+    st.success(f"**Ángulo de Refracción:** {theta_t_deg:.2f}°")
 
     st.divider()
     
@@ -69,7 +65,7 @@ with col1:
     c4.metric("T_p", f"{Tp*100:.1f} %")
     
     # Alerta didáctica para el Ángulo de Brewster
-    if Rp < 0.001 and not tir and theta_i_deg > 0:
+    if Rp < 0.001 and theta_i_deg > 0:
         st.info("💡 **¡Ángulo de Brewster detectado!** La componente paralela ($p$) se transmite por completo y la luz reflejada queda 100% polarizada en $s$.")
     
     st.divider()
@@ -81,7 +77,6 @@ with col1:
     st.metric(label="Camino Óptico Actual", value=f"{opl_puntual:.4f}")
     st.metric(label="Mínimo Absoluto (Fermat)", value=f"{opl_min:.4f}")
     
-    # En modulo2.py, reemplaza el st.warning actual
 if abs(x_interfaz - x_min) < 0.15:
     st.success(f"¡Trayectoria Real! x ≈ {x_min:.2f} cm — "
                f"este punto minimiza el OPL y cumple la Ley de Snell.")
@@ -93,8 +88,8 @@ else:
                f"encontrar la trayectoria que la naturaleza elige.")
 
 with col2:
-    # --- 3 PESTAÑAS PARALELAS (INCLUYENDO FIBRA ÓPTICA) ---
-    tab1, tab2, tab3 = st.tabs(["1. Trazado de Rayos (Snell)", "2. Minimización (Fermat)", "3. Guía de Onda (Fibra Óptica)"])
+    # --- 2 PESTAÑAS PARALELAS ---
+    tab1, tab2 = st.tabs(["1. Trazado de Rayos (Snell)", "2. Minimización (Fermat)"])
     
     with tab1:
         st.subheader("Visualización Geométrica de la Ley de Snell")
@@ -108,7 +103,6 @@ with col2:
         ax_snell.fill_between([-5, 5], 0, 5, color='blue', alpha=0.03)
         ax_snell.fill_between([-5, 5], -5, 0, color='green', alpha=0.03)
         
-        # MEJORA 1: Coordenadas absolutas del eje para fijar las etiquetas en las esquinas izquierdas
         ax_snell.text(0.02, 0.92, f"Medio 1 (n₁ = {n1})", transform=ax_snell.transAxes, weight='bold', fontsize=10)
         ax_snell.text(0.02, 0.05, f"Medio 2 (n₂ = {n2})", transform=ax_snell.transAxes, weight='bold', fontsize=10)
         
@@ -116,7 +110,6 @@ with col2:
         x_inc = -np.sin(rad_i) * 4.5
         y_inc = np.cos(rad_i) * 4.5
         
-        # Paleta de colores oscuros para texto y símbolos
         c_inc_text = "#8B0000"    
         c_ref_text = "#A04000"    
         c_trans_text = "#004D20"  
@@ -132,7 +125,6 @@ with col2:
                       label=f"Reflejado ($R = {R_main*100:.1f}\%$, $\\theta_r = {theta_i_deg:.1f}^\\circ$)")
         ax_snell.text(-x_inc/2 - 0.8, y_inc/2 + 0.3, f"R = {R_main*100:.1f}%", color=c_ref_text, weight='bold')
         
-        # Símbolos limpios para los arcos
         r_arc = 1.2  
         t_arc_i = np.linspace(0, rad_i, 20)
         
@@ -144,29 +136,27 @@ with col2:
         ax_snell.text(1.4 * r_arc * np.sin(rad_i/2), 1.4 * r_arc * np.cos(rad_i/2), 
                       r"$\theta_r$", color=c_ref_text, fontsize=11, ha='center', va='center', weight='bold')
         
-        # 3. Rayo Refractado
-        if not tir:
-            rad_t = np.radians(theta_t_deg)
-            x_ref = np.sin(rad_t) * 4.5
-            y_ref = -np.cos(rad_t) * 4.5
-            
-            grosor_trans = max(1.0, 4.0 * T_main)
-            alpha_trans = max(0.3, T_main)
-            ax_snell.plot([0, x_ref], [0, y_ref], color='green', linewidth=grosor_trans, alpha=alpha_trans, 
-                          label=f"Refractado ($T = {T_main*100:.1f}\%$, $\\theta_t = {theta_t_deg:.1f}^\\circ$)")
-            ax_snell.text(x_ref/2 + 0.2, y_ref/2 - 0.5, f"T = {T_main*100:.1f}%", color=c_trans_text, weight='bold')
-            
-            t_arc_t = np.linspace(0, rad_t, 20)
-            ax_snell.plot(r_arc * np.sin(t_arc_t), -r_arc * np.cos(t_arc_t), color='green', lw=1.2)
-            ax_snell.text(1.4 * r_arc * np.sin(rad_t/2), -1.4 * r_arc * np.cos(rad_t/2), 
-                          r"$\theta_t$", color=c_trans_text, fontsize=11, ha='center', va='center', weight='bold')
+        # 3. Rayo Refractado (Siempre ocurre porque n1 <= n2)
+        rad_t = np.radians(theta_t_deg)
+        x_ref = np.sin(rad_t) * 4.5
+        y_ref = -np.cos(rad_t) * 4.5
+        
+        grosor_trans = max(1.0, 4.0 * T_main)
+        alpha_trans = max(0.3, T_main)
+        ax_snell.plot([0, x_ref], [0, y_ref], color='green', linewidth=grosor_trans, alpha=alpha_trans, 
+                      label=f"Refractado ($T = {T_main*100:.1f}\%$, $\\theta_t = {theta_t_deg:.1f}^\\circ$)")
+        ax_snell.text(x_ref/2 + 0.2, y_ref/2 - 0.5, f"T = {T_main*100:.1f}%", color=c_trans_text, weight='bold')
+        
+        t_arc_t = np.linspace(0, rad_t, 20)
+        ax_snell.plot(r_arc * np.sin(t_arc_t), -r_arc * np.cos(t_arc_t), color='green', lw=1.2)
+        ax_snell.text(1.4 * r_arc * np.sin(rad_t/2), -1.4 * r_arc * np.cos(rad_t/2), 
+                      r"$\theta_t$", color=c_trans_text, fontsize=11, ha='center', va='center', weight='bold')
             
         ax_snell.set_xlim(-5, 5)
         ax_snell.set_ylim(-5, 5)
         ax_snell.set_aspect('equal')
         ax_snell.axis('off')
         
-        # MEJORA 2: Mover la leyenda abajo de la gráfica en forma horizontal (ncol=3) para liberar el lienzo por completo
         ax_snell.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=3, fontsize=9.5, framealpha=0.95)
         
         st.pyplot(fig_snell)
@@ -188,7 +178,6 @@ with col2:
             vec_trans = np.array([x_B - x_interfaz, y_B - 0])
             ang_trans_rad = np.arctan(abs(vec_trans[0]) / abs(vec_trans[1]))
             
-            # --- CORRECCIÓN AQUÍ: Usamos utils_math y convertimos a grados ---
             Rs_test, Rp_test, R_test, Ts_test, Tp_test, T_test = calcular_fresnel(n1, n2, np.degrees(ang_inc_rad))
             grosor_base = 4.0
             
@@ -246,58 +235,3 @@ with col2:
             ax_fermat.legend(loc='upper center')
             
             st.pyplot(fig_fermat)
-
-    with tab3:
-        st.subheader("Aplicación Industrial: Confinamiento en Fibra Óptica")
-        st.markdown("Visualiza la propagación de una señal dentro de una guía de onda dieléctrica.")
-        
-        if n1 <= n2:
-            st.warning("⚠️ **Pérdida de señal:** Para que exista confinamiento total, el índice del núcleo (Medio 1) debe ser estrictamente mayor al índice del revestimiento (Medio 2).")
-        
-        fig_fibra, ax_fibra = plt.subplots(figsize=(10, 3))
-        
-        ax_fibra.axhline(1, color='black', linewidth=2)
-        ax_fibra.axhline(-1, color='black', linewidth=2)
-        ax_fibra.fill_between([-1, 20], -1, 1, color='#add8e6', alpha=0.5, label=f"Núcleo (n₁={n1})")
-        ax_fibra.fill_between([-1, 20], 1, 2.5, color='gray', alpha=0.2, label=f"Revestimiento (n₂={n2})")
-        ax_fibra.fill_between([-1, 20], -2.5, -1, color='gray', alpha=0.2)
-        
-        x_curr, y_curr = 0.0, 0.0
-        dir_y = 1
-        ray_x, ray_y = [x_curr], [y_curr]
-        max_rebotes = 15
-        
-        for _ in range(max_rebotes):
-            dist_y = 1.0 if y_curr == 0.0 else 2.0
-            dx = dist_y * np.tan(np.radians(theta_i_deg))
-            
-            next_x = x_curr + dx
-            next_y = 1.0 if dir_y == 1 else -1.0
-            
-            t_t, tir_fibra, _ = calcular_snell(n1, n2, theta_i_deg)
-            
-            if tir_fibra:
-                ray_x.append(next_x)
-                ray_y.append(next_y)
-                x_curr, y_curr = next_x, next_y
-                dir_y *= -1
-            else:
-                ray_x.append(next_x)
-                ray_y.append(next_y)
-                
-                escape_dx = 1.5 * np.tan(np.radians(t_t))
-                ax_fibra.plot([next_x, next_x + escape_dx], [next_y, next_y + dir_y * 1.5], 
-                              color='red', linestyle='--', linewidth=2, label="Pérdida por refracción")
-                break
-                
-        ax_fibra.plot(ray_x, ray_y, color='blue', linewidth=2.5, label="Señal del haz")
-        
-        ax_fibra.set_xlim(-0.5, 12)
-        ax_fibra.set_ylim(-2.5, 2.5)
-        ax_fibra.axis('off')
-        
-        handles, labels = ax_fibra.get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        ax_fibra.legend(by_label.values(), by_label.keys(), loc='upper right')
-        
-        st.pyplot(fig_fibra)
