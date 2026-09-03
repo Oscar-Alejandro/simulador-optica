@@ -219,7 +219,7 @@ with col2:
             ax_geom.set_ylim(-6, 6)
             ax_geom.set_aspect('equal')
             ax_geom.axis('off')
-            st.info("💡 **Nota didáctica:** En este módulo de Fermat, los puntos A y B están fijos en el espacio. El ángulo de incidencia se calcula geométricamente según la posición de 'x', por lo que es independiente del ángulo definido en la barra lateral para el cálculo de Snell/Fresnel.")
+            
             st.pyplot(fig_geom)
             
         with sub_col2:
@@ -236,3 +236,4 @@ with col2:
             ax_fermat.legend(loc='upper center')
             
             st.pyplot(fig_fermat)
+            st.info("💡 **Nota didáctica:** En este módulo de Fermat, los puntos A y B están fijos en el espacio. El ángulo de incidencia se calcula geométricamente según la posición de 'x', por lo que es independiente del ángulo definido en la barra lateral para el cálculo de Snell/Fresnel.")
