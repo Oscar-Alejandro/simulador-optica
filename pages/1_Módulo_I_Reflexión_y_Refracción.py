@@ -72,18 +72,18 @@ with col1:
     st.divider()
     
     st.subheader("Principio de Fermat")
-    st.markdown("Establece que la luz sigue la trayectoria que minimiza el tiempo de viaje o **Camino Óptico (OPL)**:")
-    st.latex(r"OPL(x) = n_1 L_1 + n_2 L_2")
+    st.markdown("Establece que la luz sigue la trayectoria que minimiza el tiempo de viaje o **Camino Óptico (LCO)**:")
+    st.latex(r"LCO(x) = n_1 L_1 + n_2 L_2")
     
     st.metric(label="Camino Óptico Actual", value=f"{opl_puntual:.4f}")
     st.metric(label="Mínimo Absoluto (Fermat)", value=f"{opl_min:.4f}")
     
 if abs(x_interfaz - x_min) < 0.15:
     st.success(f"¡Trayectoria Real! x ≈ {x_min:.2f} cm — "
-               f"este punto minimiza el OPL y cumple la Ley de Snell.")
+               f"este punto minimiza el LCO y cumple la Ley de Snell.")
 else:
     diferencia = opl_puntual - opl_min
-    st.warning(f"Trayectoria de prueba — el OPL actual excede al mínimo "
+    st.warning(f"Trayectoria de prueba — el LCO actual excede al mínimo "
                f"en {diferencia:.4f} unidades. "
                f"Mueva el deslizador hacia x ≈ {x_min:.2f} cm para "
                f"encontrar la trayectoria que la naturaleza elige.")
@@ -223,10 +223,10 @@ with col2:
             st.pyplot(fig_geom)
             
         with sub_col2:
-            st.markdown("**Comportamiento del Espacio de Configuración (OPL)**")
+            st.markdown("**Comportamiento del Espacio de Configuración (LCO)**")
             fig_fermat, ax_fermat = plt.subplots(figsize=(6, 5))
             
-            ax_fermat.plot(x_array, opl_array, color='blue', linewidth=2, label="$OPL(x)$")
+            ax_fermat.plot(x_array, opl_array, color='blue', linewidth=2, label="$LCO(x)$")
             ax_fermat.plot(x_interfaz, opl_puntual, 'ro', markersize=8, label="Posición Actual")
             ax_fermat.axvline(x_min, color='green', linestyle='--', alpha=0.7, label=f"Mínimo Teórico")
             
