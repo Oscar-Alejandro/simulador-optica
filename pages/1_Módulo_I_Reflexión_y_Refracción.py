@@ -10,6 +10,14 @@ st.title("Módulo I: Reflexión y Refracción")
 st.markdown("Estudio de la Ley de Snell y verificación del Principio de Fermat.")
 
 # --- BARRA LATERAL (CONTROLES) ---
+# --- AGREGAR EN LA BARRA LATERAL (st.sidebar) ---
+st.sidebar.divider()
+st.sidebar.markdown("### 📄 Material Didáctico")
+st.sidebar.link_button(
+    "📖 Abrir Cuadernillo I (PDF)", 
+    "https://drive.google.com/file/d/1EF_FkuUI01Kq6vCW7zzvJIto827utVlP/view",
+    use_container_width=True
+)
 st.sidebar.header("Parámetros del Sistema (Snell)")
 n1 = st.sidebar.slider("Índice de refracción (Medio 1)", 1.0, 3.0, 1.0, 0.01)
 # Restricción: n2 siempre será mayor o igual a n1 para evitar Reflexión Total Interna
